@@ -8,14 +8,23 @@ import { RevealForm } from "@/components/reveal-form"
 import { BidsTable } from "@/components/bids-table"
 import type { Bid } from "@/lib/types"
 
+async function createCommitment(bidder: string, amount: string, salt: string) { 
+  const data = new TextEncoder().encode(`${bidder}:${amount}:${salt}`) 
+  const digest = await crypto.subtle.digest("SHA-256", data)
+
+  return Array.from(new Uint8Array(digest)) .map((byte) => byte.toString(16).padStart(2, "0")) 
+  .join("") 
+}
+
+
 export default function SealBidPage() {
   const [phase, setPhase] = useState<"commit" | "reveal">("commit")
   const [bids, setBids] = useState<Bid[]>([])
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const handleCommit = (bidder: string, amount: string, salt: string) => {
+  const handleCommit = async (bidder: string, amount: string, salt: string) => {
     // Generate a simple hash for demo purposes
-    const hash = btoa(`${bidder}:${amount}:${salt}`).slice(0, 16)
+    const hash = await createCommitment(bidder, amount, salt)
     
     const existingBid = bids.find((b) => b.bidder === bidder)
     if (existingBid) {
@@ -35,8 +44,8 @@ export default function SealBidPage() {
     setMessage({ type: "success", text: `Bid committed successfully for ${bidder}.` })
   }
 
-  const handleReveal = (bidder: string, amount: string, salt: string) => {
-    const expectedHash = btoa(`${bidder}:${amount}:${salt}`).slice(0, 16)
+  const handleReveal = async (bidder: string, amount: string, salt: string) => {
+    const expectedHash = await createCommitment(bidder, amount, salt)
     const bid = bids.find((b) => b.bidder === bidder)
 
     if (!bid) {
